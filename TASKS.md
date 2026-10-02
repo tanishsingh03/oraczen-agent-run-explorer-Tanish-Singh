@@ -8,172 +8,115 @@ Personal task tracker. Check off items as you go. Each section maps to one commi
 
 ```
 [✅] 1. chore: audit dataset – null costs, running runs, broken record identified
-[ ]  2. chore: project scaffold – backend/frontend dirs, .env.example, .gitignore
-[ ]  3. feat(backend): validated JSONL loader – skip/flag malformed records, handle nulls
-[ ]  4. feat(backend): GET /api/runs – pagination, composable filters, sort
-[ ]  5. feat(backend): GET /api/runs/{id} – full steps, proper 404
-[ ]  6. feat(backend): GET /api/stats – success rate, p95, cost per agent, daily counts
-[ ]  7. feat(backend): POST /api/runs/{id}/explain – streaming mock LLM provider
-[ ]  8. test(backend): filter composition + hand-verified stat assertions
+[✅] 2. chore: project scaffold – .gitignore, .env.example, TASKS.md, DECISIONS.md
+[✅] 3. feat(backend): validated JSONL loader – dedup run_0031, repair negative duration, strip whitespace
+[✅] 4. feat(backend): GET /api/runs – pagination, composable filters, None-last sort, tool filter
+[✅] 5. feat(backend): GET /api/runs/{id} – full steps, 404 for unknown IDs
+[✅] 6. feat(backend): GET /api/stats – success rate, p95 duration, partial-cost flag, daily counts
+[✅] 7. feat(backend): POST /api/runs/{id}/explain – streaming mock provider, word-by-word
+[✅] 8. test(backend): 6 tests – filter composition, hand-verified stat, 404, no-steps, pagination
 [ ]  9. feat(frontend): Next.js scaffold – App Router, TypeScript, API client
 [ ] 10. feat(frontend): /runs list – server render, URL param state, loading/empty/error
 [ ] 11. feat(frontend): /runs/[id] detail – steps, streaming explain control
 [ ] 12. feat(frontend): /dashboard – stats charts
 [ ] 13. test(frontend): component test or DECISIONS.md note
-[ ] 14. docs: DECISIONS.md – all 4 decisions + data irregularity notes
+[ ] 14. docs: DECISIONS.md – already written ✅, update after frontend complete
 [ ] 15. docs: README – clean setup steps, env vars, run instructions for reviewer
-[ ] 16. feat(optional): tool filter / deep-link steps / keyboard nav / Docker Compose
+[ ] 16. feat(optional): tool filter ✅ already in /api/runs – deep-link, keyboard nav
 ```
 
 ---
 
 ## Commit 1 — Dataset Audit ✅ DONE
 
-**Branch point:** initial commit on `main`
+**Commit:** `5d1b696` · pushed ✅
 
 - [x] Read `DATA.md` — understand all fields and their nullable/optional nature
 - [x] Scan `data/runs.jsonl` for irregularities
-- [x] Identify: 3 runs with `cost_usd: null`
-- [x] Identify: 1 run with **negative** `duration_ms` (ended_at < started_at)
-- [x] Identify: 1 run with empty `steps: []`
-- [x] Identify: 1 **duplicate `id`** — two records with same id, different status
+- [x] Identify: 3 runs with `cost_usd: null` → `run_0008`, `run_0042`, `run_0153`
+- [x] Identify: 1 run with **negative** `duration_ms` → `run_0064` (-4000ms, clock skew)
+- [x] Identify: 1 run with empty `steps: []` → `run_0089`
+- [x] Identify: 1 **duplicate `id`** → `run_0031` (one succeeded, one running)
 - [x] Identify: 9 runs with `status: "running"` — no `ended_at`, no `duration_ms`
-- [x] Identify: 1 French prompt + 1 prompt with leading/trailing whitespace
+- [x] Identify: 1 French prompt → `run_0121` + 1 prompt with leading/trailing whitespace → `run_0172`
 
 ---
 
-## Commit 2 — Project Scaffold
+## Commit 2 — Project Scaffold ✅ DONE
 
-**Commit message:** `chore: project scaffold – backend/frontend dirs, .env.example, .gitignore`
+**Commit:** `ae323f1` · pushed ✅
 
-### Backend setup
-- [ ] Create `backend/` directory
-- [ ] Create `backend/main.py` (empty FastAPI app)
-- [ ] Create `backend/requirements.txt`
-  - `fastapi`, `uvicorn[standard]`, `pytest`, `httpx`
-- [ ] Create `backend/.env` (local only, gitignored)
-
-### Frontend setup
-- [ ] Scaffold Next.js app in `frontend/` with App Router + TypeScript
-  ```bash
-  npx create-next-app@latest frontend --typescript --app --no-tailwind --eslint
-  ```
-- [ ] Install chart library (e.g. `recharts` or `chart.js`)
-
-### Root config
-- [ ] Create `.env.example` with all env vars listed:
-  ```
-  LLM_PROVIDER=mock
-  OPENAI_API_KEY=     # optional, only if using real provider
-  BACKEND_PORT=8000
-  FRONTEND_PORT=3000
-  ```
-- [ ] Create `.gitignore` — cover `__pycache__`, `.env`, `node_modules`, `.next`
-- [ ] Confirm `data/runs.jsonl` is NOT gitignored (it needs to ship with the repo)
+- [x] `backend/` directory created with all subdirs
+- [x] `backend/main.py` — FastAPI app with CORS
+- [x] `backend/requirements.txt` — fastapi, uvicorn, pytest, httpx
+- [x] `backend/providers/` — base.py + mock.py
+- [x] `backend/routes/` — runs.py, run_detail.py, stats.py, explain.py
+- [x] `backend/tests/` — test_runs.py
+- [x] `.env.example` — all env vars listed
+- [x] `.gitignore` — covers __pycache__, .env, node_modules, .next, venv
+- [x] `TASKS.md` — task tracker
+- [x] `DECISIONS.md` — all 4 required decisions answered
+- [ ] **PENDING:** `frontend/` scaffold (Commit 9)
 
 ---
 
-## Commit 3 — Validated JSONL Loader
+## Commit 3 — Validated JSONL Loader ✅ DONE
 
-**Commit message:** `feat(backend): validated JSONL loader – skip/flag malformed records, handle nulls`
+**Commit:** `24f8ee0` · pushed ✅
 
-- [ ] Create `backend/loader.py`
-- [ ] Parse all 201 lines; wrap each in try/except
-- [ ] **Duplicate ID handling:** keep the record whose status is NOT `running`
-  (or document your choice in DECISIONS.md — either is fine, just defend it)
-- [ ] **Negative duration_ms:** treat as `None` / unknown — do NOT surface it as a real value
-- [ ] **cost_usd: null:** store as `None`; never coerce to 0
-- [ ] **status: "running":** keep the record; `ended_at` and `duration_ms` stay `None`
-- [ ] **Whitespace prompt:** strip on load so text search works correctly
-- [ ] Load into memory at startup (a simple module-level list is fine for 201 records)
-- [ ] Log a warning for every skipped or repaired record
-- [ ] Write a quick sanity check: `assert len(runs) == 200` (201 lines - 1 duplicate)
-
----
-
-## Commit 4 — GET /api/runs
-
-**Commit message:** `feat(backend): GET /api/runs – pagination, composable filters, sort`
-
-### Endpoint spec
-```
-GET /api/runs
-  ?page=1&page_size=25
-  &status=succeeded&status=failed     ← multi-value
-  &agent=kpi-analyst&agent=email-drafter
-  &started_after=2026-07-01
-  &started_before=2026-08-31
-  &q=invoice                          ← prompt text search
-  &sort_by=started_at|duration_ms|cost_usd
-  &sort_dir=asc|desc
-```
-
-### Tasks
-- [ ] Create `backend/models.py` — Pydantic models for `RunSummary` (no `steps` field)
-- [ ] Create `backend/routes/runs.py`
-- [ ] Implement filter pipeline (all filters compose via AND logic):
-  - [ ] Status filter (multi-value)
-  - [ ] Agent filter (multi-value)
-  - [ ] `started_after` / `started_before` date range
-  - [ ] Text search on `prompt` (case-insensitive substring match)
-- [ ] Implement sort:
-  - [ ] `started_at` — default, desc
-  - [ ] `duration_ms` — runs with `None` duration sort last
-  - [ ] `cost_usd` — runs with `None` cost sort last
-- [ ] Implement pagination — return `{ total, page, page_size, items: [...] }`
-- [ ] **Do NOT include `steps` in list response** — only summary fields
-- [ ] Add CORS middleware so frontend can call the API
+- [x] `backend/loader.py` — full implementation
+- [x] Try/except around every line
+- [x] **Duplicate ID `run_0031`:** kept `succeeded`, discarded `running`
+- [x] **Negative `duration_ms` on `run_0064`:** set to `None`, warned
+- [x] **`cost_usd: null`:** stored as `None`, never coerced to 0
+- [x] **`status: "running"`:** kept, `ended_at` and `duration_ms` stay `None`
+- [x] **Whitespace prompt `run_0172`:** stripped on load
+- [x] Module-level `runs: list[dict]` + `runs_by_id: dict` for O(1) lookup
+- [x] Every repair is logged → nothing is silent
+- [x] Loads 200 unique runs (201 lines − 1 duplicate)
 
 ---
 
-## Commit 5 — GET /api/runs/{id}
+## Commit 4 — GET /api/runs ✅ DONE
 
-**Commit message:** `feat(backend): GET /api/runs/{id} – full steps, proper 404`
+**Commit:** `6f08ecd` · pushed ✅
 
-- [ ] Create `backend/routes/run_detail.py`
-- [ ] Create `RunDetail` Pydantic model (includes `steps` array)
-- [ ] Return full run with all steps in index order
-- [ ] Return HTTP 404 with `{ "detail": "Run not found" }` for unknown IDs
-- [ ] Handle the duplicate-ID case consistently (whichever record you kept in the loader)
+- [x] `backend/models.py` — RunSummary (no steps), RunDetail, RunsResponse, StatsResponse
+- [x] `backend/routes/runs.py` — full implementation
+- [x] Status filter (multi-value OR)
+- [x] Agent filter (multi-value OR)
+- [x] `started_after` / `started_before` date range
+- [x] Text search on prompt (case-insensitive)
+- [x] **Tool filter** (bonus should-build feature — already included)
+- [x] Sort by `started_at` / `duration_ms` / `cost_usd` — None values sort last
+- [x] Pagination — returns `{ total, page, page_size, items }`
+- [x] Steps excluded from list response ✅
+- [x] CORS middleware in main.py
 
 ---
 
-## Commit 6 — GET /api/stats
+## Commit 5 — GET /api/runs/{id} ✅ DONE
 
-**Commit message:** `feat(backend): GET /api/stats – success rate, p95, cost per agent, daily counts`
+**Commit:** `e4032ea` · pushed ✅
 
-### Response shape
-```json
-{
-  "overall": {
-    "total_runs": 201,
-    "success_rate": 0.62,
-    "median_duration_ms": 21000,
-    "p95_duration_ms": 47000
-  },
-  "per_agent": [
-    {
-      "agent": "kpi-analyst",
-      "total_runs": 42,
-      "success_rate": 0.57,
-      "total_cost_usd": 2.31,
-      "cost_usd_is_partial": true
-    }
-  ],
-  "daily_counts": [
-    { "date": "2026-07-20", "count": 5 }
-  ]
-}
-```
+- [x] `backend/routes/run_detail.py` — full implementation
+- [x] `RunDetail` model includes steps array
+- [x] Steps sorted by index defensively
+- [x] HTTP 404 with `{ "detail": "Run 'X' not found" }` for unknown IDs
+- [x] Uses `runs_by_id` dict → O(1) lookup
 
-### Tasks
-- [ ] Compute overall run count and success rate
-  - Decision needed: does `running` count toward success rate? → DECISIONS.md
-- [ ] Compute median and p95 duration over **completed** runs only (exclude `running` and negative duration)
-- [ ] Compute total cost per agent
-  - Exclude `null` costs from the sum; surface `cost_usd_is_partial: true` if any are missing
-- [ ] Compute run counts per day across the full date range (include days with 0 runs)
-- [ ] Stats are **global** (not filter-aware) — document this in DECISIONS.md
+---
+
+## Commit 6 — GET /api/stats ✅ DONE
+
+**Commit:** `8cb164c` · pushed ✅
+
+- [x] `backend/routes/stats.py` — full implementation
+- [x] Overall: total runs, success rate (running excluded from denominator)
+- [x] Median + p95 duration — completed runs only, negative durations excluded
+- [x] Per-agent: success rate, total cost, `cost_usd_is_partial` flag
+- [x] Daily counts — fills ALL days in range, including zero-count days
+- [x] Stats are global (documented in DECISIONS.md §4)
 
 ---
 
@@ -203,17 +146,16 @@ backend/providers/
 
 ---
 
-## Commit 8 — Backend Tests
+## Commit 8 — Backend Tests ✅ DONE
 
-**Commit message:** `test(backend): filter composition + hand-verified stat assertions`
+**Commit:** `c24f1ef` · pushed ✅  **6/6 PASS ✅**
 
-- [ ] Create `backend/tests/test_runs.py`
-- [ ] **Test 1: Filter composition** — query `status=failed&agent=kpi-analyst`, assert all returned runs match BOTH filters
-- [ ] **Test 2: Filter composition (3 filters)** — add a date range on top, assert count is correct
-- [ ] **Test 3: Hand-verified stat** — compute a statistic by hand from the raw JSONL (e.g., total succeeded runs for `email-drafter`), assert `/api/stats` matches
-- [ ] **Test 4: 404** — GET `/api/runs/run_9999` returns 404
-- [ ] **Test 5: No steps in list** — verify `steps` key is absent from `/api/runs` items
-- [ ] Run all tests: `pytest backend/tests/ -v`
+- [x] `test_two_filters_compose_status_and_agent` — status=failed AND agent=kpi-analyst
+- [x] `test_stats_succeeded_email_drafter_matches_raw` — hand-verified against raw JSONL
+- [x] `test_three_filters_compose_status_agent_date` — 3 simultaneous filters
+- [x] `test_get_unknown_run_returns_404` — unknown ID → 404
+- [x] `test_list_endpoint_omits_steps` — no steps key in list response
+- [x] `test_pagination_total_and_pages` — pages don't overlap, totals consistent
 
 ---
 

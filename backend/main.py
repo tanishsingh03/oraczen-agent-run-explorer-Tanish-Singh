@@ -1,12 +1,4 @@
-"""
-main.py — FastAPI application entry point.
 
-WHY CORSMiddleware?
-  The frontend runs on port 3000 and calls the backend on port 8000.
-  Browsers block cross-origin requests by default. CORS middleware allows
-  the frontend origin explicitly rather than using allow_origins=["*"],
-  which would be insecure in a production deployment.
-"""
 
 import logging
 from fastapi import FastAPI
@@ -43,5 +35,4 @@ app.include_router(explain_router)
 
 @app.get("/healthz", tags=["meta"])
 def healthz():
-    """Liveness check — useful for Docker Compose health checks."""
     return {"status": "ok"}

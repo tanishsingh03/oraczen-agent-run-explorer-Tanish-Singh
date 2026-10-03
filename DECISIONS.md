@@ -41,8 +41,8 @@ would be wrong. The most honest answer is to count only runs that have finished.
 
 **Decision on sorting by `duration_ms`:**
 Runs with `duration_ms: null` sort last in both ascending and descending order.
-The sort key is a tuple `(has_value: 0|1, value)`. Nones always get `has_value=0`
-so they sink to the bottom regardless of direction.
+The implementation partitions runs into two lists — those with a value and those without —
+sorts only the valued list, then appends the null list at the end regardless of direction.
 
 **Why not sort them first?**
 Sorting nulls first would mix "currently running" and "fast runs" at the top of
@@ -103,11 +103,22 @@ endpoint can be added without changing the existing contract.
 
 ---
 
+## Frontend Test Note
+
+I skipped writing a Jest/React Testing Library test due to time constraints. If I had more time, I would test:
+
+- **`RunsFilters` component**: render it, click the "failed" status badge, assert the URL changes to `?status=failed` and the "Clear" button appears
+- **`Pagination` component**: given `total=100, page=1, pageSize=25`, assert 4 page buttons render and clicking page 2 pushes `?page=2` to the router
+- **`ExplainButton`**: mock `fetch`, click the button, assert the streaming text appears character by character
+
+I skipped it because the backend test suite (59 tests) is thorough and the frontend logic is thin — the pages are mostly server-rendered with URL state passed down as props, which is easier to verify end-to-end than in unit tests.
+
+---
+
 ## What I Would Do With Another Day
 
-1. **Frontend tests** — I wrote a note in DECISIONS.md instead of a test (see Commit 13).
-   I would add a React Testing Library test for the filter controls on `/runs`, asserting
-   that selecting a status updates the URL and the displayed "Showing X of Y" count.
+1. **Frontend tests** — see note above.
+   Specifically: `RunsFilters` status toggle → URL assertion, `ExplainButton` streaming mock.
 
 2. **Cursor pagination** — The current offset pagination is simple and correct for 200 records.
    At larger scale, offset pagination becomes slow (`OFFSET 50000` scans 50k rows).

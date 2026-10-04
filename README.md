@@ -6,7 +6,7 @@ A web tool for browsing and understanding agent execution traces.
 
 - Python 3.10+
 - Node.js 18+
-- Nothing else — no Docker, no database
+
 
 ---
 
